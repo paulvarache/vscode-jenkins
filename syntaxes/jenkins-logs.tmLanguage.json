@@ -1,0 +1,140 @@
+{
+    "name": "Jenkins logs",
+    "scopeName": "source.jenkins",
+    "fileTypes": [
+        "jenkins.log"
+    ],
+    "repository": {
+        "status": {
+            "name": "meta.status.jenkins",
+            "patterns": [{
+                "name": "markup.inserted status.success",
+                "match": "SUCCESS"
+            }, {
+                "name": "markup.deleted status.failure",
+                "match": "FAILURE"
+            }]
+        },
+        "finished": {
+            "name": "finished.job.jenkins",
+            "begin": "Finished: ",
+            "end": "$",
+            "patterns": [
+                {
+                    "include": "#status"
+                }
+            ]
+        },
+        "shellscript": {
+            "name": "source.jenkins.embedded.shellscript",
+            "begin": "^\\+|\\s>\\s",
+            "end": "$",
+            "beginCaptures": [
+                {
+                    "name": "keyword.operator.jenkins"
+                }
+            ],
+            "patterns": [
+                {
+                    "include": "source.shell"
+                }
+            ]
+        },
+        "pipeline-pair": {
+            "name": "block.jenkins",
+            "begin": "\\[Pipeline\\] \\{\\s?(.*)",
+            "end": "\\[Pipeline\\] \\}",
+            "beginCaptures": [
+                {
+                    "name": "comment.line.pipeline.jenkins"
+                },
+                {
+                    "name": "string.unquoted.jenkins"
+                }
+            ],
+            "endCaptures": [
+                {
+                    "name": "comment.line.pipeline.jenkins"
+                }
+            ],
+            "patterns": [
+                {
+                    "include": "#shellscript"
+                },
+                {
+                    "include": "#running-on"
+                },
+                {
+                    "include": "#pipeline-pair"
+                },
+                {
+                    "include": "#pipeline-comment"
+                }
+            ]
+        },
+        "pipeline-comment": {
+            "name": "comment.line.pipeline.jenkins",
+            "match": "^\\[Pipeline\\]"
+        },
+        "running-on": {
+            "name": "runningon.jenkins",
+            "match": "Running on (.+) in (.+)",
+            "captures": [
+                {
+                    "name": "runningon.jenkins"
+                },
+                {
+                    "name": "node.jenkins"
+                },
+                {
+                    "name": "string.quoted.single.jenkins"
+                }
+            ]
+        },
+        "log": {
+            "patterns": [{
+                "begin": "\"",
+                "beginCaptures": {
+                    "0": {
+                        "name": "punctuation.definition.string.begin.jenkins"
+                    }
+                },
+                "end": "\"",
+                "endCaptures": {
+                    "0": {
+                        "name": "punctuation.definition.string.end.jenkins"
+                    }
+                },
+                "name": "string.quoted.double.jenkins"
+            }]
+        }
+    },
+    "patterns": [
+        {
+            "match": "Push event to branch (.+)",
+            "captures": {
+                "1": {
+                    "name": "constant.language.jenkins"
+                }
+            }
+        },
+        {
+            "include": "#pipeline-pair"
+        },
+        {
+            "include": "#running-on"
+        },
+        {
+            "include": "#pipeline-comment"
+        },
+        {
+            "include": "#shellscript"
+        },
+        {
+            "include": "#log"
+        },
+        {
+            "include": "#finished"
+        }
+    ]
+}

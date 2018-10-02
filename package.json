@@ -1,0 +1,138 @@
+{
+    "name": "vscode-jenkins",
+    "displayName": "vscode-jenkins",
+    "description": "Jenkins integration with vscode",
+    "version": "0.0.1",
+    "publisher": "paulvarache",
+    "engines": {
+        "vscode": "^1.25.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "main": "./out/extension",
+    "activationEvents": [
+        "*"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "jenkins-logs",
+                "extensions": [
+                    ".jenkins.log"
+                ],
+                "configuration": "./languages/jenkins-logs.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "jenkins-logs",
+                "scopeName": "source.jenkins",
+                "path": "./syntaxes/jenkins-logs.tmLanguage.json"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "jenkins-container",
+                    "title": "Jenkins",
+                    "icon": "resources/jenkins-container.svg"
+                }
+            ]
+        },
+        "views": {
+            "explorer": [
+                {
+                    "id": "jenkins-job",
+                    "name": "Jenkins Job"
+                }
+            ],
+            "jenkins-container": [
+                {
+                    "id": "jenkins-container-jobs",
+                    "name": "Jobs"
+                },
+                {
+                    "id": "jenkins-container-nodes",
+                    "name": "nodes"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "jenkins.openLogs",
+                "title": "Open Jenkins logs",
+                "icon": {
+                    "dark": "resources/icons/dark/refresh.svg",
+                    "light": "resources/icons/light/refresh.svg"
+                }
+            },
+            {
+                "command": "jenkins.refreshJobs",
+                "title": "Refresh jenkins jobs",
+                "icon": {
+                    "dark": "resources/icons/dark/refresh.svg",
+                    "light": "resources/icons/light/refresh.svg"
+                }
+            }
+        ],
+        "menus": {
+            "view/title": [
+                {
+                    "command": "jenkins.refreshJobs",
+                    "when": "view == jenkins-container-jobs",
+                    "group": "navigation"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "jenkins.openLogs",
+                    "when": "viewItem == build",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "jenkins configuration",
+            "properties": {
+                "jenkins.endpoint": {
+                    "type": "string",
+                    "description": "Remote endpoint of the your jenkins environment",
+                    "default": "localhost:8080"
+                },
+                "jenkins.username": {
+                    "type": "string",
+                    "description": "Your jenkins username",
+                    "default": ""
+                },
+                "jenkins.token": {
+                    "type": "string",
+                    "description": "Your jenkins user Token",
+                    "default": ""
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^7.0.43",
+        "@types/node-fetch": "^2.1.1",
+        "tslint": "^5.8.0",
+        "typescript": "^2.6.1",
+        "vscode": "^1.1.6"
+    },
+    "dependencies": {
+        "@types/form-data": "^2.2.1",
+        "@types/mkdirp": "^0.5.2",
+        "mkdirp": "^0.5.1",
+        "node-fetch": "^2.1.2"
+    }
+}
