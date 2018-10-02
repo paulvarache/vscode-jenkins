@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { JenkinsTree } from './jenkins-tree-view-item';
-import { JenkinsTreeViewItem, TreeViewItemType } from './jenkins-tree-view-item';
+import { JenkinsTreeViewItem } from './jenkins-tree-view-item';
+import { JenkinsTreeViewJobProvider } from './tree-data-providers/jenkins-tree-view-job-provider';
 import * as path from 'path';
 
 export class JenkinsJobTreeViewProvider implements vscode.TreeDataProvider<JenkinsTreeViewItem> {
@@ -15,76 +16,51 @@ export class JenkinsJobTreeViewProvider implements vscode.TreeDataProvider<Jenki
         this.onDidChangeTreeData = this.emitter.event;
         this.tree = tree;
     }
-    setWorkspaceName(name : string) {
+    setWorkspaceName(name : string) : void {
+        // No change here
+        if (name === this.workspaceName) {
+            return;
+        }
         this.workspaceName = name;
         this.updateJob();
+    }
+    rebuildTree() {
+        this.tree.rebuild();
+        if (this.workspaceName) {
+            this.findJobForName(this.workspaceName);
+        }
     }
     updateJob() {
         if (this.workspaceName === null) {
             return;
         }
-        // this.findJobForName(this.workspaceName);
+        this.findJobForName(this.workspaceName);
     }
-    // findJobForName(name : string) {
-    //     this.api.list(3, ['name', 'url'])
-    //         .then((res) => {
-    //             const job = this.findJobForJobs(res.jobs, name);
-    //             return this.api.getJobInfo(job.url);
-    //         })
-    //         .then((jobInfo) => {
-    //             const jobItem = JenkinsTreeViewItem.jobToTreeItem(jobInfo);
-    //             if (jobItem === null) {
-    //                 return;
-    //             }
-    //             this.root = [jobItem];
-    //             this.emitter.fire();
-    //         });
-
-    // }
-    findJobForJobs(jobs : any[], name : string) : any {
-        for (let i = 0; i< jobs.length; i += 1) {
-            if (jobs[i].name === name) {
-                return jobs[i];
-            }
-            if (jobs[i].jobs) {
-                const found = this.findJobForJobs(jobs[i].jobs, name);
-                if (found) {
-                    return found;
+    findJobForName(name : string) {
+        this.tree.search(name)
+            .then((jobItem) => {
+                if (!jobItem) {
+                    return;
                 }
-            }
-        }
-        return null;
+                this.root = [jobItem];
+                this.emitter.fire();
+            });
+
     }
     getTreeItem(element : JenkinsTreeViewItem) : vscode.TreeItem {
         const item = new vscode.TreeItem(element.label);
-        item.collapsibleState = element.type === TreeViewItemType.MultiBranch
-                            || element.type === TreeViewItemType.Branch ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+        item.collapsibleState = JenkinsTreeViewJobProvider.getCollapsibleState(element);
         const icon = element.getIcon();
         if (icon !== null) {
             item.iconPath = this.context.asAbsolutePath(path.join('resources/icons', icon));
         }
+        item.contextValue = element.getContextValue();
         return item;
     }
     getChildren(element : JenkinsTreeViewItem) : Thenable<JenkinsTreeViewItem[]> | JenkinsTreeViewItem[] {
         if (!element) {
             return this.root;
         }
-        // if (element.type === TreeViewItemType.MultiBranch) {
-        //     return this.api.getJobInfo(element.url)
-        //         .then((res: any) => res.jobs.map((job : any) => JenkinsTreeViewItem.jobToTreeItem(job)));
-        // }
-        // if (element.type === TreeViewItemType.Branch) {
-        //     return this.api.getJobInfo(element.url)
-        //         .then((res: any) => res.builds.map((build : any) => JenkinsJobTreeViewProvider.buildToTreeItem(build)));
-        // }
-        return element.children;
+        return this.tree.getChildren(element);
     }
-    // static buildToTreeItem(build : any) : JenkinsTreeViewItem {
-    //     const type = JenkinsTreeViewItem.classToType(build._class);
-    //     const item = new JenkinsTreeViewItem(build.number.toString(), type, build.url);
-    //     if (build.color) {
-    //         item.color = build.color;
-    //     }
-    //     return item;
-    // }
 }

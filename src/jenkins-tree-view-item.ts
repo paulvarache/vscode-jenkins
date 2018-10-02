@@ -111,6 +111,32 @@ export class JenkinsTree {
         node.state = JenkinsTree.resToState(res, type);
         return node;
     }
+    rebuild() {
+        this.root = [];
+    }
+    search(name : string) : Thenable<JenkinsTreeViewItem|null> {
+        return this.api.suggest(name)
+            .then((res) => {
+                const { suggestions } = res;
+                const item = suggestions.map((suggestion : any) => {
+                    const pieces = suggestion.name.split(' ');
+                    return {
+                        id: pieces.pop(),
+                        name: suggestion.name,
+                    };
+                }).find((el : any) => el.id === name);
+                if (!item) {
+                    return null;
+                }
+                return this.api.search(item.name)
+                    .then((urlMaybe) => {
+                        if (!urlMaybe) {
+                            return Promise.resolve(null);
+                        }
+                        return this.getNode(urlMaybe);
+                    });
+            });
+    }
     getNode(uri : string) : Thenable<JenkinsTreeViewItem> {
         const node = this.registry.get(uri);
         if (node) {

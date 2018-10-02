@@ -19,6 +19,12 @@ const URLS: any = {
     computers(){
         return `/computer${API}`;
     },
+    suggest(name : string) {
+        return `/search/suggest?query=${name}`;
+    },
+    search(name : string) {
+        return `/search/?q=${name.replace(/\s/g, '+')}`;
+    }
 };
 
 interface ConsoleChunk {
@@ -100,7 +106,26 @@ export class JenkinsApi {
     }
     getFromUrl(url : string) {
         return fetch(`${url}${API}`, { headers: this.headers })
-                .then(r => r.json());
+            .then(r => r.json());
+    }
+    suggest(name : string) : Thenable<any> {
+        return fetch(this.buildUrl('suggest', name), { headers: this.headers })
+            .then(r => r.json());
+
+    }
+    search(name : string) : Thenable<string|null> {
+        return fetch(this.buildUrl('search', name), { headers: this.headers, redirect: 'manual' })
+            .then(r => {
+                if (r.status === 302) {
+                    const location = r.headers.get('location');
+                    if (!location) {
+                        return null;
+                    }
+                    return location.slice(0, -1);
+                }
+                return null;
+            });
+
     }
     get apiSuffix() : string {
         return API;

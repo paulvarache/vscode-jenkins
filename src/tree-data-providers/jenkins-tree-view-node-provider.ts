@@ -31,6 +31,7 @@ export class JenkinsTreeViewNodeProvider implements vscode.TreeDataProvider<Jenk
         return this.tree.getChildren(element);
     }
     rebuildTree() {
+        this.tree.rebuild();
         this.emitter.fire();
     }
 }

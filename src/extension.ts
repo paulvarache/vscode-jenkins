@@ -50,19 +50,31 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('jenkins')) {
-            jobProvider.tree = getTree();
-            jobsProvider.tree = getTree();
-            nodesProvider.tree = getTree();
+            vscode.commands.executeCommand('jenkins.refreshJobs');
         }
+        jobsProvider.tree = getTree();
+        nodesProvider.tree = getTree();
+        jobProvider.tree = getTree();
     });
 
-    vscode.workspace.onDidOpenTextDocument((event) => {
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(event.uri);
+    function updateWorkspace(uri : vscode.Uri) {
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
         if (!workspaceFolder) {
             return;
         }
         jobProvider.setWorkspaceName(workspaceFolder.name);
+    }
+
+    vscode.workspace.onDidOpenTextDocument((event) => {
+        updateWorkspace(event.uri);
     });
+
+    const { activeTextEditor } = vscode.window;
+
+    if (activeTextEditor) {
+        const { document } = activeTextEditor;
+        updateWorkspace(document.uri);
+    }
 
     let disposable = vscode.commands.registerCommand('jenkins.openLogs', (element : JenkinsTreeViewItem) => {
         if (!element) {
@@ -72,7 +84,6 @@ export function activate(context: vscode.ExtensionContext) {
         const filePath = '/test.jenkins.log';
         const inStream = api.streamConsole(element.url);
         logFS.registerLog(filePath, inStream);
-        // vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(`jenkins-logs://autority${filePath}`))
         vscode.workspace.openTextDocument(vscode.Uri.parse(`jenkins-logs://autority${filePath}`))
             .then((document : vscode.TextDocument) => {
                 return vscode.window.showTextDocument(document);
@@ -80,15 +91,26 @@ export function activate(context: vscode.ExtensionContext) {
                 console.error(e);
             });
     });
-    let dis = vscode.commands.registerCommand('jenkins.refreshJobs', () => {
+    let refreshJobs = vscode.commands.registerCommand('jenkins.refreshJobs', () => {
         // The code you place here will be executed every time your command is executed
-
+        jobsProvider.rebuildTree();
         // Display a message box to the user
-        vscode.window.showInformationMessage('Referesh jobs!');
+        vscode.window.showInformationMessage('Refreshed jobs');
+    });
+    let refreshNodes = vscode.commands.registerCommand('jenkins.refreshNodes', () => {
+        // The code you place here will be executed every time your command is executed
+        nodesProvider.rebuildTree();
+        // Display a message box to the user
+        vscode.window.showInformationMessage('Refreshed nodes');
+    });
+    let refreshJob = vscode.commands.registerCommand('jenkins.refreshJob', () => {
+        // The code you place here will be executed every time your command is executed
+        jobProvider.rebuildTree();
+        // Display a message box to the user
+        vscode.window.showInformationMessage('Refreshed current job');
     });
 
-    context.subscriptions.push(disposable, providerRegistrations);
-    context.subscriptions.push(dis);
+    context.subscriptions.push(disposable, providerRegistrations, refreshJobs, refreshJob, refreshNodes);
 }
 
 // this method is called when your extension is deactivated

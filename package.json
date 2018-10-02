@@ -74,6 +74,22 @@
                     "dark": "resources/icons/dark/refresh.svg",
                     "light": "resources/icons/light/refresh.svg"
                 }
+            },
+            {
+                "command": "jenkins.refreshNodes",
+                "title": "Refresh jenkins nodes",
+                "icon": {
+                    "dark": "resources/icons/dark/refresh.svg",
+                    "light": "resources/icons/light/refresh.svg"
+                }
+            },
+            {
+                "command": "jenkins.refreshJob",
+                "title": "Refresh current jenkins job",
+                "icon": {
+                    "dark": "resources/icons/dark/refresh.svg",
+                    "light": "resources/icons/light/refresh.svg"
+                }
             }
         ],
         "menus": {
@@ -81,6 +97,16 @@
                 {
                     "command": "jenkins.refreshJobs",
                     "when": "view == jenkins-container-jobs",
+                    "group": "navigation"
+                },
+                {
+                    "command": "jenkins.refreshNodes",
+                    "when": "view == jenkins-container-nodes",
+                    "group": "navigation"
+                },
+                {
+                    "command": "jenkins.refreshJob",
+                    "when": "view == jenkins-job",
                     "group": "navigation"
                 }
             ],
