@@ -1,15 +1,18 @@
 import * as vscode from 'vscode';
 import { LogFS } from './log-fs';
+import { JenkinsTree } from './jenkins-tree-view-item';
 
 export class TextDocumentContentProvider implements vscode.TextDocumentContentProvider, vscode.DocumentLinkProvider {
     private _onDidChange = new vscode.EventEmitter<vscode.Uri>();
     public logFS : LogFS;
     public subscription : vscode.Disposable | null = null;
+    public tree : JenkinsTree;
 
     static scheme = 'jenkins-logs';
 
-    constructor(logFS : LogFS) {
+    constructor(logFS : LogFS, tree : JenkinsTree) {
         this.logFS = logFS;
+        this.tree = tree;
     }
 
     public provideTextDocumentContent(uri: vscode.Uri): string {
@@ -26,7 +29,17 @@ export class TextDocumentContentProvider implements vscode.TextDocumentContentPr
                 m.shift();
                 const start = m[0].length;
                 const end = start + m[1].length;
-                links.push(new vscode.DocumentLink(new vscode.Range(new vscode.Position(index, start), new vscode.Position(index, end)), vscode.Uri.parse('jenkins-node')));
+                const name = m[1];
+                const node = this.tree.getComputerNodeByName(name);
+                if (!node) {
+                    return;
+                }
+                links.push(
+                    new vscode.DocumentLink(new vscode.Range(
+                        new vscode.Position(index, start),
+                        new vscode.Position(index, end)),
+                    vscode.Uri.parse((node.url))),
+                );
             }
         });
         return links;
@@ -54,7 +67,7 @@ export class TextDocumentContentProvider implements vscode.TextDocumentContentPr
 
     private snippet(uri : vscode.Uri) : string {
         const name = uri.path;
-        const log = this.logFS.getLog(name);
+        const log = this.logFS.getLog(decodeURIComponent(name));
         if (!log) {
             return '';
         }

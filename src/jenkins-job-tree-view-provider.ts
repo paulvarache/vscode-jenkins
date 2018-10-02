@@ -55,6 +55,12 @@ export class JenkinsJobTreeViewProvider implements vscode.TreeDataProvider<Jenki
             item.iconPath = this.context.asAbsolutePath(path.join('resources/icons', icon));
         }
         item.contextValue = element.getContextValue();
+        item.command = {
+            title: 'open logs',
+            tooltip: 'Show log output',
+            arguments: [element],
+            command: 'jenkins.openLogs',
+        };
         return item;
     }
     getChildren(element : JenkinsTreeViewItem) : Thenable<JenkinsTreeViewItem[]> | JenkinsTreeViewItem[] {

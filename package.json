@@ -44,7 +44,7 @@
             "explorer": [
                 {
                     "id": "jenkins-job",
-                    "name": "Jenkins Job"
+                    "name": "Jenkins"
                 }
             ],
             "jenkins-container": [

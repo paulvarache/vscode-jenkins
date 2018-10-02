@@ -54,38 +54,47 @@ export class JenkinsTreeViewItem {
         }
     }
     static getStateSuffix(state : TreeViewItemState) : string {
+        let suffix;
         switch (state) {
             case TreeViewItemState.Unknown: {
-                return 'unknown';
+                suffix = null;
+                break;
             }
             case TreeViewItemState.Building: {
-                return 'building';
+                suffix = 'building';
+                break;
             }
             case TreeViewItemState.Success: {
-                return 'success';
+                suffix = 'success';
+                break;
             }
             case TreeViewItemState.Failure: {
-                return 'failure';
+                suffix = 'failure';
+                break;
             }
         }
+        return suffix ? `-${suffix}` : '';
     }
     getIcon() : string | null {
         const suffix = `${JenkinsTreeViewItem.getStateSuffix(this.state)}.svg`;
         switch(this.type) {
-            case TreeViewItemType.MasterNode: {
-                return `master-${suffix}`;
-            }
+            case TreeViewItemType.Node:
+            case TreeViewItemType.MasterNode:
             case TreeViewItemType.SlaveNode: {
-                return `slave-${suffix}`;
+                return `node${suffix}`;
             }
             case TreeViewItemType.Build: {
-                return `build-${suffix}`;
+                return `build${suffix}`;
+            }
+            case TreeViewItemType.MultiBranch: {
+                return `project${suffix}`;
             }
             case TreeViewItemType.Branch: {
-                return `branch-${suffix}`;
+                return `branch${suffix}`;
             }
-            case TreeViewItemType.Node: {
-                return `node-${suffix}`;
+            case TreeViewItemType.Org:
+            case TreeViewItemType.Project: {
+                return `directory${suffix}`;
             }
         }
         return null;
@@ -96,20 +105,29 @@ export class JenkinsTree {
     public api : JenkinsApi;
     public root : JenkinsTreeViewItem[];
     public registry : Map<string, JenkinsTreeViewItem>;
+    private nodesByName : Map<string, JenkinsTreeViewItem> = new Map();
     constructor(api : JenkinsApi) {
         this.api = api;
         this.root = [];
         this.registry = new Map();
     }
-    static createNode(res : any) : JenkinsTreeViewItem {
-        const id = res.url;
+    createNode(res : any) : JenkinsTreeViewItem {
         const type = JenkinsTree.classToType(res._class);
         const label = JenkinsTree.resToLabel(res, type);
+        const id = this.resToUrl(res, type);
         const node = new JenkinsTreeViewItem(id, label, type);
-        const children = JenkinsTree.resToChildren(res, type);
+        const children = this.resToChildren(res, type);
         node.setChildren(children);
         node.state = JenkinsTree.resToState(res, type);
+        if (node.type === TreeViewItemType.Node
+            || node.type === TreeViewItemType.MasterNode
+            || node.type === TreeViewItemType.SlaveNode) {
+            this.nodesByName.set(node.label, node);
+        }
         return node;
+    }
+    getComputerNodeByName(name : string) : JenkinsTreeViewItem|null {
+        return this.nodesByName.get(name) || null;
     }
     rebuild() {
         this.root = [];
@@ -144,7 +162,7 @@ export class JenkinsTree {
         }
         return this.api.getFromUrl(uri)
             .then((res) => {
-                const node = JenkinsTree.createNode(res);
+                const node = this.createNode(res);
                 node.populated = true;
                 this.registry.set(uri, node);
                 return node;
@@ -165,11 +183,20 @@ export class JenkinsTree {
         return this.getNode(element.url)
             .then(node => node.children);
     }
+    resToUrl(res : any, type : TreeViewItemType) {
+        if ( type === TreeViewItemType.SlaveNode) {
+            return `${this.api.host}/computer/${encodeURIComponent(res.displayName)}/`;
+        } else if (type === TreeViewItemType.MasterNode) {
+            return `${this.api.host}/computer/${encodeURIComponent(res.displayName)}/`;
+        }
+        return res.url;
+    }
     static classToType(cla : string) : TreeViewItemType {
         switch (cla) {
         case 'org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject': {
             return TreeViewItemType.MultiBranch;
         }
+        case 'com.cloudbees.hudson.plugins.folder.Folder':
         case 'jenkins.branch.OrganizationFolder': {
             return TreeViewItemType.Org;
         }
@@ -222,7 +249,7 @@ export class JenkinsTree {
         }
         return '';
     }
-    static resToChildren(res : any, type : TreeViewItemType) : JenkinsTreeViewItem[] {
+    resToChildren(res : any, type : TreeViewItemType) : JenkinsTreeViewItem[] {
         let childrenArray : any[] = [];
         switch (type) {
             case TreeViewItemType.JenkinsRoot:
@@ -241,7 +268,7 @@ export class JenkinsTree {
                 break;
             }
         }
-        return childrenArray.map(child => JenkinsTree.createNode(child));
+        return childrenArray.map(child => this.createNode(child));
     }
     static resToState(res : any, type : TreeViewItemType) : TreeViewItemState {
         switch (type) {
