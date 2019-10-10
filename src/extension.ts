@@ -7,8 +7,6 @@ import { JenkinsTree, JenkinsTreeViewItem, TreeViewItemType } from './jenkins-tr
 import { JenkinsJobTreeViewProvider } from './jenkins-job-tree-view-provider';
 import { JenkinsTreeViewJobProvider } from './tree-data-providers/jenkins-tree-view-job-provider';
 import { JenkinsTreeViewNodeProvider } from './tree-data-providers/jenkins-tree-view-node-provider';
-import { TextDocumentContentProvider } from './text-document-content-provider';
-import { LogFS } from './log-fs';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -38,18 +36,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider('jenkins-container-jobs', jobsProvider);
     vscode.window.registerTreeDataProvider('jenkins-container-nodes', nodesProvider);
 
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "vscode-jenkins" is now active!');
-
-    const logFS = new LogFS();
-
-    let provider = new TextDocumentContentProvider(logFS, tree);
-    const providerRegistrations = vscode.Disposable.from(
-        vscode.workspace.registerTextDocumentContentProvider(TextDocumentContentProvider.scheme, provider),
-        vscode.languages.registerDocumentLinkProvider({ scheme: TextDocumentContentProvider.scheme }, provider),
-    );
-
     vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('jenkins')) {
             vscode.commands.executeCommand('jenkins.refreshJobs');
@@ -58,7 +44,6 @@ export function activate(context: vscode.ExtensionContext) {
         jobsProvider.tree = tree;
         nodesProvider.tree = tree;
         jobProvider.tree = tree;
-        provider.tree = tree;
     });
 
     function updateWorkspace(uri : vscode.Uri) {
@@ -85,15 +70,25 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
         const api = getApi();
-        const filePath = `/${encodeURIComponent(element.label)}.jenkins.log`;
-        const inStream = api.streamConsole(element.url);
-        logFS.registerLog(`/${element.label}.jenkins.log`, inStream);
-        vscode.workspace.openTextDocument(vscode.Uri.parse(`jenkins-logs://autority${filePath}`))
-            .then((document : vscode.TextDocument) => {
-                return vscode.window.showTextDocument(document);
-            }, (e) => {
-                console.error(e);
-            });
+        const jobUrl = vscode.Uri.parse(element.url);
+        const stream = api.streamConsole(jobUrl.toString(), 1000);
+
+        const writeEmitter = new vscode.EventEmitter<string>();
+        const cb = (chunk : Buffer) => {
+            writeEmitter.fire(chunk.toString());
+        };
+        const pty : vscode.Pseudoterminal = {
+            onDidWrite: writeEmitter.event,
+            open: () => {
+                stream.on('data', cb);
+            },
+            close: () => {
+                stream.removeListener('data', cb);
+            },
+        };
+
+        const terminal = vscode.window.createTerminal({ name: jobUrl.path, pty });
+        terminal.show();
     });
     let refreshJobs = vscode.commands.registerCommand('jenkins.refreshJobs', () => {
         // The code you place here will be executed every time your command is executed
@@ -114,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Refreshed current job');
     });
 
-    context.subscriptions.push(disposable, providerRegistrations, refreshJobs, refreshJob, refreshNodes);
+    context.subscriptions.push(disposable, refreshJobs, refreshJob, refreshNodes);
 }
 
 // this method is called when your extension is deactivated

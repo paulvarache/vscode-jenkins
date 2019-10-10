@@ -2,10 +2,10 @@
     "name": "vscode-jenkins",
     "displayName": "vscode-jenkins",
     "description": "Jenkins integration with vscode",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "paulvarache",
     "engines": {
-        "vscode": "^1.25.0"
+        "vscode": "^1.39.0"
     },
     "categories": [
         "Other"
@@ -15,22 +15,6 @@
         "*"
     ],
     "contributes": {
-        "languages": [
-            {
-                "id": "jenkins-logs",
-                "extensions": [
-                    ".jenkins.log"
-                ],
-                "configuration": "./languages/jenkins-logs.json"
-            }
-        ],
-        "grammars": [
-            {
-                "language": "jenkins-logs",
-                "scopeName": "source.jenkins",
-                "path": "./syntaxes/jenkins-logs.tmLanguage.json"
-            }
-        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -153,11 +137,12 @@
         "@types/node-fetch": "^2.1.1",
         "tslint": "^5.8.0",
         "typescript": "^2.6.1",
-        "vscode": "^1.1.6"
+        "vscode": "^1.1.36"
     },
     "dependencies": {
         "@types/form-data": "^2.2.1",
         "@types/mkdirp": "^0.5.2",
+        "form-data": "^2.3.2",
         "mkdirp": "^0.5.1",
         "node-fetch": "^2.1.2",
         "url-parse": "^1.4.3"

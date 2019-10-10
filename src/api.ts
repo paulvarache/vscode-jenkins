@@ -91,7 +91,11 @@ export class JenkinsApi {
         const queryNext = (pointer : number) : PromiseLike<number> | number => {
             return this.console(url, pointer)
                 .then((res : ConsoleChunk) : PromiseLike<number> | number => {
+                    if (stream.isPaused()) {
+                        return -1;
+                    }
                     if (res.ended) {
+                        console.log(res.text);
                         stream.push(res.text);
                         stream.push(null);
                         return -1;

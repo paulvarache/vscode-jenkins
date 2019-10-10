@@ -8,10 +8,14 @@ export class RemoteLog {
     constructor(stream : Readable) {
         this.stream = stream;
         this.contents = '';
-        this.stream.on('data', (data) => {
-            this.contents = `${this.contents}${data.toString()}`;
+        setInterval(() => {
+            this.contents += Math.random() + '\n';
             this._onDidChange.fire(this.contents);
-        });
+        }, 2000);
+        // this.stream.on('data', (data) => {
+        //     this.contents = `${this.contents}${data.toString()}`;
+        //     this._onDidChange.fire(this.contents);
+        // });
     }
     get onDidChange(): vscode.Event<string> {
         return this._onDidChange.event;
