@@ -1,6 +1,3 @@
-'use strict';
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { JenkinsApi } from './api';
 import { JenkinsTree, JenkinsTreeViewItem, TreeViewItemType } from './jenkins-tree-view-item';
@@ -8,44 +5,62 @@ import { JenkinsJobTreeViewProvider } from './jenkins-job-tree-view-provider';
 import { JenkinsTreeViewJobProvider } from './tree-data-providers/jenkins-tree-view-job-provider';
 import { JenkinsTreeViewNodeProvider } from './tree-data-providers/jenkins-tree-view-node-provider';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+// Key used to lookup the config in the vscode settings file
+// This will match the prefix provided in the configuration section of contributes in the package.json
+const JENKINS_CONFIG_KEY = 'jenkins';
+
+/**
+ * Returns the JenkinsAPI instance for the current workspace configuration
+ */
+function getJenkinsApi() {    
+    return JenkinsApi.getCurrent(vscode.workspace.getConfiguration(JENKINS_CONFIG_KEY));
+}
+
+/**
+ * Returns the jobs and nodes tree representation of the current JenkinsAPI
+ */
+function getJenkinsTree() {
+    const api = getJenkinsApi();
+    return new JenkinsTree(api);
+}
+
 export function activate(context: vscode.ExtensionContext) {
     let tree;
 
-    function getApi() {
-        const { endpoint, token, username } = vscode.workspace.getConfiguration('jenkins');
-    
-        const host = `https://${endpoint}`;
-    
-        return new JenkinsApi(host, username, token);
-    }
+    tree = getJenkinsTree();
 
-    function getTree() {
-        const api = getApi();
-        return new JenkinsTree(api);
-    }
-
-    tree = getTree();
-
+    // Create 3 tree providers
+    // Job displays the job matching the currently open editor
+    // it is displayed in the Explorer view
     const jobProvider = new JenkinsJobTreeViewProvider(context, tree);
+    // Jobs will display all jenkins jobs from that instance, in the jenkins view
     const jobsProvider = new JenkinsTreeViewJobProvider(context, tree);
+    // Nodes will display all jenkins nodes from that instance, in the jenkins view
     const nodesProvider = new JenkinsTreeViewNodeProvider(context, tree);
 
-    vscode.window.registerTreeDataProvider('jenkins-job', jobProvider);
-    vscode.window.registerTreeDataProvider('jenkins-container-jobs', jobsProvider);
-    vscode.window.registerTreeDataProvider('jenkins-container-nodes', nodesProvider);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('jenkins-job', jobProvider),
+        vscode.window.registerTreeDataProvider('jenkins-container-jobs', jobsProvider),
+        vscode.window.registerTreeDataProvider('jenkins-container-nodes', nodesProvider),
+    );
 
+    // Update the API and Tree when the config changes
     vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('jenkins')) {
+            tree = getJenkinsTree();
+            jobsProvider.tree = tree;
+            nodesProvider.tree = tree;
+            jobProvider.tree = tree;
             vscode.commands.executeCommand('jenkins.refreshJobs');
+            vscode.commands.executeCommand('jenkins.refreshJob');
+            vscode.commands.executeCommand('jenkins.refreshNodes');
         }
-        tree = getTree();
-        jobsProvider.tree = tree;
-        nodesProvider.tree = tree;
-        jobProvider.tree = tree;
-    });
+    }, null, context.subscriptions);
 
+    /**
+     * Updates the workspace name given to the Job tree view
+     * @param uri URI of the currently open resource
+     */
     function updateWorkspace(uri : vscode.Uri) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
         if (!workspaceFolder) {
@@ -54,22 +69,18 @@ export function activate(context: vscode.ExtensionContext) {
         jobProvider.setWorkspaceName(workspaceFolder.name);
     }
 
+    // Update the name when a new document opens
     vscode.workspace.onDidOpenTextDocument((event) => {
         updateWorkspace(event.uri);
-    });
+    }, null, context.subscriptions);
 
-    const { activeTextEditor } = vscode.window;
-
-    if (activeTextEditor) {
-        const { document } = activeTextEditor;
-        updateWorkspace(document.uri);
-    }
-
-    let disposable = vscode.commands.registerCommand('jenkins.openLogs', (element : JenkinsTreeViewItem) => {
+    // Sets up the openLogs command
+    // This command will create a new pseudo terminal with the logs of the provided jenkins tree item
+    const openLogsCommand = vscode.commands.registerCommand('jenkins.openLogs', (element : JenkinsTreeViewItem) => {
         if (!element || element.type !== TreeViewItemType.Build) {
             return;
         }
-        const api = getApi();
+        const api = getJenkinsApi();
         const jobUrl = vscode.Uri.parse(element.url);
         const stream = api.streamConsole(jobUrl.toString(), 1000);
 
@@ -90,28 +101,23 @@ export function activate(context: vscode.ExtensionContext) {
         const terminal = vscode.window.createTerminal({ name: jobUrl.path, pty });
         terminal.show();
     });
-    let refreshJobs = vscode.commands.registerCommand('jenkins.refreshJobs', () => {
-        // The code you place here will be executed every time your command is executed
-        jobsProvider.rebuildTree();
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Refreshed jobs');
-    });
-    let refreshNodes = vscode.commands.registerCommand('jenkins.refreshNodes', () => {
-        // The code you place here will be executed every time your command is executed
-        nodesProvider.rebuildTree();
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Refreshed nodes');
-    });
-    let refreshJob = vscode.commands.registerCommand('jenkins.refreshJob', () => {
-        // The code you place here will be executed every time your command is executed
-        jobProvider.rebuildTree();
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Refreshed current job');
-    });
+    context.subscriptions.push(openLogsCommand);
 
-    context.subscriptions.push(disposable, refreshJobs, refreshJob, refreshNodes);
+    // Setup 3 command, one for each tree available
+    context.subscriptions.push(
+        vscode.commands.registerCommand('jenkins.refreshJobs', () => jobsProvider.rebuildTree()),
+        vscode.commands.registerCommand('jenkins.refreshNodes', () => nodesProvider.rebuildTree()),
+        vscode.commands.registerCommand('jenkins.refreshJob', () => jobProvider.rebuildTree()),
+    );
+
+    const { activeTextEditor } = vscode.window;
+
+    // Update the name if an editor is already open
+    if (activeTextEditor) {
+        const { document } = activeTextEditor;
+        updateWorkspace(document.uri);
+    }
 }
 
-// this method is called when your extension is deactivated
 export function deactivate() {
 }

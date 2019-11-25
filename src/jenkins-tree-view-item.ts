@@ -149,7 +149,7 @@ export class JenkinsTree {
                 return this.api.search(item.name)
                     .then((urlMaybe) => {
                         if (!urlMaybe) {
-                            return Promise.resolve(null);
+                            return null;
                         }
                         return this.getNode(urlMaybe);
                     });

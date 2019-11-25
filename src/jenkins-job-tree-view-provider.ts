@@ -8,7 +8,7 @@ export class JenkinsJobTreeViewProvider implements vscode.TreeDataProvider<Jenki
     public workspaceName : string | null = null;
     public tree : JenkinsTree;
     private root : JenkinsTreeViewItem[] = [];
-    private emitter : vscode.EventEmitter<JenkinsTreeViewItem> = new vscode.EventEmitter<JenkinsTreeViewItem>();
+    private emitter = new vscode.EventEmitter<JenkinsTreeViewItem>();
     public onDidChangeTreeData : vscode.Event<JenkinsTreeViewItem>;
     public context : vscode.ExtensionContext;
     constructor(context : vscode.ExtensionContext, tree : JenkinsTree) {
@@ -16,6 +16,10 @@ export class JenkinsJobTreeViewProvider implements vscode.TreeDataProvider<Jenki
         this.onDidChangeTreeData = this.emitter.event;
         this.tree = tree;
     }
+    /**
+     * Update the current workspace. This will try to find a matching job and update the tree if it does
+     * @param name The name of the current workspace being used
+     */
     setWorkspaceName(name : string) : void {
         // No change here
         if (name === this.workspaceName) {

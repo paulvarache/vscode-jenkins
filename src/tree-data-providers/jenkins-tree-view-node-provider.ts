@@ -5,7 +5,7 @@ import * as path from 'path';
 
 export class JenkinsTreeViewNodeProvider implements vscode.TreeDataProvider<JenkinsTreeViewItem> {
     public tree : JenkinsTree;
-    private emitter : vscode.EventEmitter<JenkinsTreeViewItem> = new vscode.EventEmitter<JenkinsTreeViewItem>();
+    private emitter = new vscode.EventEmitter<JenkinsTreeViewItem>();
     public onDidChangeTreeData : vscode.Event<JenkinsTreeViewItem>;
     public context : vscode.ExtensionContext;
     constructor(context : vscode.ExtensionContext, tree : JenkinsTree) {

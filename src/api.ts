@@ -1,24 +1,12 @@
 import fetch from 'node-fetch';
 import { Readable } from 'stream';
 import * as FormData from 'form-data';
+import * as vscode from 'vscode';
 
-const API = '/api/json';
+// Use the json API from jenkins
+const SUFFIX = '/api/json';
 
-function createFilters(depth : number = 1, filters : string[] = [], name : string) : string {
-    if (depth === 1) {
-        return `${name}[${filters.join(',')}]`;
-    }
-    return `${name}[${filters.join(',')},${createFilters(depth - 1, filters, name)}]`;
-}
-
-const URLS: any = {
-    list(depth : number = 1, filters : string[] = []) {
-        const tree = createFilters(depth, filters, 'jobs');
-        return `${API}?tree=${tree}&depth=${depth}`;
-    },
-    computers(){
-        return `/computer${API}`;
-    },
+const URLS: { [K : string] : (...args : any[]) => string } = {
     suggest(name : string) {
         return `/search/suggest?query=${name}`;
     },
@@ -27,6 +15,9 @@ const URLS: any = {
     }
 };
 
+/**
+ * Represent a log chunk from the jenkins console
+ */
 interface ConsoleChunk {
     text : string;
     ended : boolean;
@@ -49,24 +40,15 @@ export class JenkinsApi {
             Authorization: `Basic ${auth}`,
         };
     }
+    static getCurrent(config : vscode.WorkspaceConfiguration) {
+        const { endpoint, token, username } = config;
+    
+        const host = `https://${endpoint}`;
+    
+        return new JenkinsApi(host, username, token);
+    }
     buildUrl(id : string, ...args : any[]) {
         return `${this.host}${URLS[id](...args)}`;
-    }
-    list(depth : number = 1, filters : string[] = ['name']) : Thenable<any> {
-        return fetch(this.buildUrl('list', depth, filters), { headers: this.headers })
-                .then(r => r.json());
-    }
-    getJobInfo(url : string) : Thenable<any> {
-        return fetch(`${url}${API}`, { headers: this.headers })
-                .then(r => r.json());
-    }
-    getBuilds(url : string) : Thenable<any> {
-        return fetch(`${url}/build${API}`, { headers: this.headers })
-                .then(r => r.json());
-    }
-    listComputers() : Thenable<any> {
-        return fetch(this.buildUrl('computers'), { headers: this.headers })
-                .then(r => r.json());
     }
     console(url : string, start : number = 0) : PromiseLike<ConsoleChunk> {
         const form = new FormData();
@@ -95,7 +77,6 @@ export class JenkinsApi {
                         return -1;
                     }
                     if (res.ended) {
-                        console.log(res.text);
                         stream.push(res.text);
                         stream.push(null);
                         return -1;
@@ -109,7 +90,7 @@ export class JenkinsApi {
         return stream;
     }
     getFromUrl(url : string) {
-        return fetch(`${url}${API}`, { headers: this.headers })
+        return fetch(`${url}${SUFFIX}`, { headers: this.headers })
             .then(r => r.json());
     }
     suggest(name : string) : Thenable<any> {
@@ -132,6 +113,6 @@ export class JenkinsApi {
 
     }
     get apiSuffix() : string {
-        return API;
+        return SUFFIX;
     }
 }
