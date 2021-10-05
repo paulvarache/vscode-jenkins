@@ -145,6 +145,6 @@
         "form-data": "^2.3.2",
         "mkdirp": "^0.5.1",
         "node-fetch": "^2.1.2",
-        "url-parse": "^1.4.3"
+        "url-parse": "^1.5.2"
     }
 }
